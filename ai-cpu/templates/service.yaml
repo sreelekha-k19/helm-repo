@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "ai-cpu.fullname" . }}
+  labels:
+    {{- include "ai-cpu.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - port: {{ .Values.service.port }}
+      targetPort: {{ .Values.image.containerPort }}
+      protocol: TCP
+      name: connection
+  selector:
+    {{- include "ai-cpu.selectorLabels" . | nindent 4 }}
+

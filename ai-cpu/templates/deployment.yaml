@@ -1,0 +1,374 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "ai-cpu.fullname" . }}
+  labels:
+    {{- include "ai-cpu.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "ai-cpu.selectorLabels" . | nindent 6 }}
+  strategy:
+    rollingUpdate:
+      maxSurge: 8
+      maxUnavailable: 0
+    type: RollingUpdate
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "ai-cpu.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "ai-cpu.serviceAccountName" . }}
+      volumes:
+        - name: cpu-volume
+          persistentVolumeClaim:
+            claimName: cpu-pvc
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      dnsConfig:
+        options:
+        - name: ndots
+          value: "1"
+      dnsPolicy: ClusterFirst
+      nodeSeletor:
+        name: "non-gpu"
+      containers:
+        - name: {{ .Chart.Name }}
+          command: ["/bin/sh","-c"]
+          args: 
+            - ./run.sh;
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          {{- if .Values.image.imageLifecycle.enabled }}
+          lifecycle: {{- toYaml .Values.image.imageLifecycle.lifecycle | nindent 12 }}
+          {{- end }}
+          volumeMounts:
+            - name: cpu-volume
+              mountPath: /home/cpu
+          ports:
+            - name: http
+              containerPort: {{ .Values.image.containerPort }}
+              protocol: TCP
+          {{- if .Values.probes.livenessProbe.enabled }}
+          env:
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: ai-cpu
+                  key: AWS_ACCESS_KEY_ID
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: ai-cpu
+                  key: AWS_SECRET_ACCESS_KEY
+            - name: DEFAULT_FILE_STORAGE
+              valueFrom:
+                secretKeyRef:
+                  name: ai-cpu
+                  key: DEFAULT_FILE_STORAGE
+            - name: AWS_STORAGE_BUCKET_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: ai-cpu
+                  key: AWS_STORAGE_BUCKET_NAME
+            - name: AWS_S3_REGION_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: ai-cpu
+                  key: AWS_S3_REGION_NAME
+            - name: AWS_ACCESS_KEY_ID_REVIEW
+              valueFrom:
+                secretKeyRef:
+                  name: ai-cpu
+                  key: AWS_ACCESS_KEY_ID_REVIEW
+            - name: AWS_SECRET_ACCESS_KEY_REVIEW
+              valueFrom:
+                secretKeyRef:
+                  name: ai-cpu
+                  key: AWS_SECRET_ACCESS_KEY_REVIEW
+            - name: DEFAULT_FILE_STORAGE_REVIEW
+              valueFrom:
+                secretKeyRef:
+                  name: ai-cpu
+                  key: DEFAULT_FILE_STORAGE_REVIEW
+            - name: AWS_STORAGE_BUCKET_NAME_REVIEW
+              valueFrom:
+                secretKeyRef:
+                  name: ai-cpu
+                  key: AWS_STORAGE_BUCKET_NAME_REVIEW
+            - name: AWS_S3_REGION_NAME_REVIEW
+              valueFrom:
+                secretKeyRef:
+                  name: ai-cpu
+                  key: AWS_S3_REGION_NAME_REVIEW
+            - name: AWS_ACCESS_KEY_ID_DRAFT
+              valueFrom:
+                secretKeyRef:
+                  name: ai-cpu
+                  key: AWS_ACCESS_KEY_ID_DRAFT
+            - name: AWS_SECRET_ACCESS_KEY_DRAFT
+              valueFrom:
+                secretKeyRef:
+                  name: ai-cpu
+                  key: AWS_SECRET_ACCESS_KEY_DRAFT
+            - name: DEFAULT_FILE_STORAGE_DRAFT
+              valueFrom:
+                secretKeyRef:
+                  name: ai-cpu
+                  key: DEFAULT_FILE_STORAGE_DRAFT
+            - name: AWS_STORAGE_BUCKET_NAME_DRAFT
+              valueFrom:
+                secretKeyRef:
+                  name: ai-cpu
+                  key: AWS_STORAGE_BUCKET_NAME_DRAFT
+            - name: AWS_S3_REGION_NAME_DRAFT
+              valueFrom:
+                secretKeyRef:
+                  name: ai-cpu
+                  key: AWS_S3_REGION_NAME_DRAFT
+            - name: SNS_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: ai-cpu
+                  key: SNS_USERNAME
+            - name: MONGO_DB_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: ai-cpu
+                  key: MONGO_DB_NAME
+            - name: MONGO_DB_AUTH_SOURCE
+              valueFrom:
+                secretKeyRef:
+                  name: ai-cpu
+                  key: MONGO_DB_AUTH_SOURCE
+            - name: MONGO_DB_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: ai-cpu
+                  key: MONGO_DB_HOST
+            - name: MONGO_DB_PORT
+              valueFrom:
+                secretKeyRef:
+                  name: ai-cpu
+                  key: MONGO_DB_PORT
+            - name: MONGO_DB_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: ai-cpu
+                  key: MONGO_DB_USERNAME
+            - name: MONGO_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: ai-cpu
+                  key: MONGO_DB_PASSWORD
+            - name: CLAUSE_LIBRARY_INDEX
+              valueFrom:
+                secretKeyRef:
+                  name: ai-cpu
+                  key: CLAUSE_LIBRARY_INDEX
+            - name: ES_SERVER_IP
+              valueFrom:
+                secretKeyRef:
+                  name: ai-cpu
+                  key: ES_SERVER_IP
+            - name: ES_SERVER_PORT
+              valueFrom:
+                secretKeyRef:
+                  name: ai-cpu
+                  key: ES_SERVER_PORT
+            - name: USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: ai-cpu
+                  key: USERNAME
+            - name: PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: ai-cpu
+                  key: PASSWORD
+            - name: BACKEND_URL_PDF2WORD
+              valueFrom:
+                secretKeyRef:
+                  name: ai-cpu
+                  key: BACKEND_URL_PDF2WORD
+            - name: BACKEND_URL_UNIQUE_CLAUSES
+              valueFrom:
+                secretKeyRef:
+                  name: ai-cpu
+                  key: BACKEND_URL_UNIQUE_CLAUSES
+            - name: BACKEND_URL_UNIQUE_CLAUSES_SAVE_MANUALLY
+              valueFrom:
+                secretKeyRef:
+                  name: ai-cpu
+                  key: BACKEND_URL_UNIQUE_CLAUSES_SAVE_MANUALLY
+            - name: S3_DOWNLOAD_PATH
+              valueFrom:
+                secretKeyRef:
+                  name: ai-cpu
+                  key: S3_DOWNLOAD_PATH
+            - name: PATH_TO_SAVE_DOC_FILES
+              valueFrom:
+                secretKeyRef:
+                  name: ai-cpu
+                  key: PATH_TO_SAVE_DOC_FILES
+            - name: PDF_IMAGES_FOLDER
+              valueFrom:
+                secretKeyRef:
+                  name: ai-cpu
+                  key: PDF_IMAGES_FOLDER
+            - name: LOG_FOLDER_PATH
+              valueFrom:
+                secretKeyRef:
+                  name: ai-cpu
+                  key: LOG_FOLDER_PATH
+            - name: MODEL_DIR_PATH
+              valueFrom:
+                secretKeyRef:
+                  name: ai-cpu
+                  key: MODEL_DIR_PATH
+            - name: TLB_NER_MODEL
+              valueFrom:
+                secretKeyRef:
+                  name: ai-cpu
+                  key: TLB_NER_MODEL
+            - name: USE_GPU_NER
+              valueFrom:
+                secretKeyRef:
+                  name: ai-cpu
+                  key: USE_GPU_NER
+            - name: OPENAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: ai-cpu
+                  key: OPENAI_API_KEY
+            - name: AI_MAIN_API_IP
+              valueFrom:
+                secretKeyRef:
+                  name: ai-cpu
+                  key: AI_MAIN_API_IP
+            - name: AI_MAIN_API_PORT
+              valueFrom:
+                secretKeyRef:
+                  name: ai-cpu
+                  key: AI_MAIN_API_PORT
+            - name: AI_NER_API_IP
+              valueFrom:
+                secretKeyRef:
+                  name: ai-cpu
+                  key: AI_NER_API_IP
+            - name: AI_NER_API_PORT
+              valueFrom:
+                secretKeyRef:
+                  name: ai-cpu
+                  key: AI_NER_API_PORT
+            - name: AI_API_IP
+              valueFrom:
+                secretKeyRef:
+                  name: ai-cpu
+                  key: AI_API_IP
+            - name: AI_API_PORT
+              valueFrom:
+                secretKeyRef:
+                  name: ai-cpu
+                  key: AI_API_PORT
+            - name: RMQ_USER
+              valueFrom:
+                secretKeyRef:
+                  name: ai-cpu
+                  key: RMQ_USER
+            - name: RMQ_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: ai-cpu
+                  key: RMQ_PASS
+            - name: RMQ_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: ai-cpu
+                  key: RMQ_HOST
+            - name: RMQ_EXCHANGE
+              valueFrom:
+                secretKeyRef:
+                  name: ai-cpu
+                  key: RMQ_EXCHANGE
+            - name: RMQ_EXCHANGE_TYPE
+              valueFrom:
+                secretKeyRef:
+                  name: ai-cpu
+                  key: RMQ_EXCHANGE_TYPE
+            - name: RMQ_PORT
+              valueFrom:
+                secretKeyRef:
+                  name: ai-cpu
+                  key: RMQ_PORT
+            - name: DURABLE
+              valueFrom:
+                secretKeyRef:
+                  name: ai-cpu
+                  key: DURABLE
+            - name: CONSUMER_QUEUE
+              valueFrom:
+                secretKeyRef:
+                  name: ai-cpu
+                  key: CONSUMER_QUEUE
+            - name: AI_WORKFLOW1_QUEUE
+              valueFrom:
+                secretKeyRef:
+                  name: ai-cpu
+                  key: AI_WORKFLOW1_QUEUE
+            - name: AI_WORKFLOW2_QUEUE
+              valueFrom:
+                secretKeyRef:
+                  name: ai-cpu
+                  key: AI_WORKFLOW2_QUEUE
+
+          # livenessProbe:
+          #   httpGet:
+          #     path: {{ .Values.probes.livenessProbe.path }}
+          #     port: {{ .Values.image.containerPort }}
+          #   initialDelaySeconds: {{ .Values.probes.livenessProbe.initialDelaySeconds }}
+          #   periodSeconds: {{ .Values.probes.livenessProbe.periodSeconds }}
+          #   successThreshold: {{ .Values.probes.livenessProbe.successThreshold }}
+          #   timeoutSeconds: {{ .Values.probes.livenessProbe.timeoutSeconds }}
+          #   failureThreshold: {{ .Values.probes.livenessProbe.failureThreshold }}
+          # {{- end }}
+          # {{- if .Values.probes.readinessProbe.enabled }}
+          # readinessProbe:
+          #   httpGet:
+          #     path: {{ .Values.probes.readinessProbe.path }}
+          #     port: {{ .Values.image.containerPort }}
+          #   initialDelaySeconds: {{ .Values.probes.readinessProbe.initialDelaySeconds }}
+          #   periodSeconds: {{ .Values.probes.readinessProbe.periodSeconds }}
+          #   successThreshold: {{ .Values.probes.readinessProbe.successThreshold }}
+          #   timeoutSeconds: {{ .Values.probes.readinessProbe.timeoutSeconds }}
+          #   failureThreshold: {{ .Values.probes.readinessProbe.failureThreshold }}
+          # {{- end }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+      {{- with .Values.nodeSelector }}
+      terminationGracePeriodSeconds: {{ .Values.terminationGracePeriodSeconds }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+
